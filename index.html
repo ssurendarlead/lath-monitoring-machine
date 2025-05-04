@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Lathe Monitoring System</title>
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-database-compat.min.js"></script>
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        :root {
+            --primary: #4285f4;
+            --secondary: #34a853;
+            --warning: #fbbc05;
+            --danger: #ea4335;
+            --light: #f8f9fa;
+            --dark: #343a40;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        header h1 {
+            font-size: 1.8rem;
+            margin: 0;
+        }
+        
+        .team-info {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ccc;
+        }
+        
+        .status-dot.online {
+            background-color: var(--secondary);
+            box-shadow: 0 0 8px var(--secondary);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            color: var(--dark);
+            font-weight: 600;
+        }
+        
+        .card-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .gauge-container {
+            position: relative;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .gauge {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .gauge-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        
+        .gauge-unit {
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+        
+        .start-btn {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .stop-btn {
+            background-color: var(--danger);
+            color: white;
+            opacity: 0.7;
+        }
+        
+        .start-btn:hover {
+            background-color: #2d9649;
+        }
+        
+        .stop-btn:hover {
+            opacity: 1;
+        }
+        
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .stat-item {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            min-width: 120px;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #666;
+            font-size: 0.8rem;
+            padding: 20px 0;
+            border-top: 1px solid #eee;
+        }
+        
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>IoT Lathe Monitoring System</h1>
+                <div class="team-info">
+                    Project by: Man Maghizhan P, Kamalesh M, Mark Amoris G, Jaya Ganesh V
+                </div>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot" id="connectionStatus"></div>
+                <span id="connectionText">Connecting...</span>
+            </div>
+        </header>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">RPM Monitoring</h2>
+                    <span id="timestamp">Last updated: --</span>
+                </div>
+                <div class="card-content">
+                    <div class="gauge-container">
+                        <canvas id="rpmGauge" class="gauge"></canvas>
+                        <div class="gauge-value">
+                            <span id="rpmValue">0</span>
+                            <div class="gauge-unit">RPM</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="rpmChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Temperature Monitoring</h2>
+                    <span id="tempStatus">Normal</span>
+                </div>
+                <div class="card-content">
+                    <div class="gauge-container">
+                        <canvas id="tempGauge" class="gauge"></canvas>
+                        <div class="gauge-value">
+                            <span id="tempValue">0</span>
+                            <div class="gauge-unit">°C</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+                <h2 class="card-title">Machine Controls</h2>
+                <span id="runningTime">Running time: 00:00:00</span>
+            </div>
+            <div class="controls">
+                <button id="startBtn" class="control-btn start-btn">Start Lathe</button>
+                <button id="stopBtn" class="control-btn stop-btn disabled">Stop Lathe</button>
+            </div>
+            
+            <div class="stats-container">
+                <div class="stat-item">
+                    <div class="stat-value" id="avgRpm">0</div>
+                    <div class="stat-label">Avg. RPM</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="maxRpm">0</div>
+                    <div class="stat-label">Max RPM</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="avgTemp">0</div>
+                    <div class="stat-label">Avg. Temp</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="maxTemp">0</div>
+                    <div class="stat-label">Max Temp</div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            © 2025 IoT Lathe Monitoring System. All rights reserved.
+        </footer>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            databaseURL: "https://broon-4469c-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+
+        // Initialize Firebase
+        let firebaseApp;
+        let database;
+        let isConnected = false;
+        
+        try {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            isConnected = true;
+            
+            // Set up real-time listener for RPM data
+            const rpmRef = database.ref('RPM/current');
+            rpmRef.on('value', (snapshot) => {
+                if (snapshot.exists() && isRunning) {
+                    const newRpm = snapshot.val();
+                    currentRpm = newRpm;
+                    updateRPMDisplay(currentRpm);
+                    
+                    // Store for statistics
+                    rpmValues.push(currentRpm);
+                    if (rpmValues.length > 100) rpmValues.shift(); // Keep last 100 values
+                    
+                    // Update statistics
+                    updateStatistics();
+                    
+                    // Update timestamp
+                    document.getElementById('timestamp').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                }
+            });
+
+            // Update connection status
+            database.ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === true) {
+                    document.getElementById('connectionStatus').classList.add('online');
+                    document.getElementById('connectionText').textContent = 'Connected';
+                } else {
+                    document.getElementById('connectionStatus').classList.remove('online');
+                    document.getElementById('connectionText').textContent = 'Disconnected';
+                }
+            });
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            document.getElementById('connectionText').textContent = 'Connection Failed';
+        }
+
+        // Chart.js setup
+        const rpmChartCtx = document.getElementById('rpmChart').getContext('2d');
+        const tempChartCtx = document.getElementById('tempChart').getContext('2d');
+        
+        // Set up time labels (last 10 minutes)
+        const timeLabels = Array.from({length: 20}, (_, i) => 
+            new Date(Date.now() - (19-i) * 30000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})
+        );
+        
+        // Initial data
+        const rpmData = Array(20).fill(0);
+        const tempData = Array(20).fill(20); // Starting at ambient temperature
+        
+        // Chart configuration
+        const rpmChart = new Chart(rpmChartCtx, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'RPM',
+                    data: rpmData,
+                    fill: true,
+                    backgroundColor: 'rgba(66, 133, 244, 0.2)',
+                    borderColor: 'rgba(66, 133, 244, 1)',
+                    tension: 0.4,
+                    pointRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: 3000
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 5
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        const tempChart = new Chart(tempChartCtx, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'Temperature',
+                    data: tempData,
+                    fill: true,
+                    backgroundColor: 'rgba(234, 67, 53, 0.2)',
+                    borderColor: 'rgba(234, 67, 53, 1)',
+                    tension: 0.4,
+                    pointRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: 100
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 5
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // Gauge charts setup
+        const rpmGaugeCtx = document.getElementById('rpmGauge').getContext('2d');
+        const tempGaugeCtx = document.getElementById('tempGauge').getContext('2d');
+        
+        const rpmGauge = new Chart(rpmGaugeCtx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [0, 3000],
+                    backgroundColor: [
+                        'rgba(66, 133, 244, 0.8)',
+                        'rgba(66, 133, 244, 0.1)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '70%',
+                circumference: 270,
+                rotation: -135,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            }
+        });
+        
+        const tempGauge = new Chart(tempGaugeCtx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [0, 100],
+                    backgroundColor: [
+                        'rgba(234, 67, 53, 0.8)',
+                        'rgba(234, 67, 53, 0.1)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '70%',
+                circumference: 270,
+                rotation: -135,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            }
+        });
+        
+        // Machine state variables
+        let isRunning = false;
+        let startTime = null;
+        let currentRpm = 0;
+        let currentTemp = 20; // Start at ambient temperature
+        let temperatureTimer = null;
+        let dataInterval = null;
+        let rpmValues = [];
+        let tempValues = [];
+        
+        // Control buttons
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        
+        startBtn.addEventListener('click', startMachine);
+        stopBtn.addEventListener('click', stopMachine);
+        
+        function startMachine() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            startTime = new Date();
+            
+            // Update UI
+            startBtn.classList.add('disabled');
+            stopBtn.classList.remove('disabled');
+            
+            // Start temperature monitoring
+            temperatureTimer = setInterval(increaseTemperature, 5000);
+            
+            // Update running time
+            setInterval(updateRunningTime, 1000);
+        }
+        
+        function stopMachine() {
+            if (!isRunning) return;
+            
+            isRunning = false;
+            
+            // Update UI
+            startBtn.classList.remove('disabled');
+            stopBtn.classList.add('disabled');
+            
+            // Stop temperature monitoring
+            clearInterval(temperatureTimer);
+            
+            // Reset RPM display
+            currentRpm = 0;
+            updateRPMDisplay(currentRpm);
+            
+            // Gradually decrease temperature
+            const cooldownInterval = setInterval(() => {
+                currentTemp = Math.max(20, currentTemp - 0.5);
+                updateTemperatureDisplay(currentTemp);
+                
+                if (currentTemp <= 20) {
+                    clearInterval(cooldownInterval);
+                }
+            }, 1000);
+        }
+        
+        function updateRunningTime() {
+            if (!isRunning || !startTime) return;
+            
+            const now = new Date();
+            const diff = now - startTime;
+            
+            const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
+            const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+            const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+            
+            document.getElementById('runningTime').textContent = `Running time: ${hours}:${minutes}:${seconds}`;
+        }
+        
+        function updateData() {
+            if (!isRunning) return;
+            
+            // In a real app, this would read from Firebase
+            // Instead, we'll simulate RPM data
+            simulateRPMData();
+            
+            // Update timestamp
+            document.getElementById('timestamp').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+        }
+        
+        function simulateRPMData() {
+            // Simulate gradual RPM increase when starting
+            if (currentRpm < 1000) {
+                currentRpm = Math.min(1000, currentRpm + 50);
+            } else {
+                // Random fluctuations around the target RPM
+                const fluctuation = Math.random() * 200 - 100;
+                currentRpm = Math.max(500, Math.min(2800, currentRpm + fluctuation));
+            }
+            
+            updateRPMDisplay(currentRpm);
+            
+            // Store for statistics
+            rpmValues.push(currentRpm);
+            if (rpmValues.length > 100) rpmValues.shift(); // Keep last 100 values
+            
+            // Update statistics
+            updateStatistics();
+        }
+        
+        function increaseTemperature() {
+            if (!isRunning) return;
+            
+            // Temperature increases gradually based on running time and current RPM
+            const tempIncrease = (currentRpm / 3000) * (Math.random() * 0.5 + 0.2);
+            currentTemp = Math.min(85, currentTemp + tempIncrease);
+            
+            updateTemperatureDisplay(currentTemp);
+            
+            // Store for statistics
+            tempValues.push(currentTemp);
+            if (tempValues.length > 100) tempValues.shift(); // Keep last 100 values
+            
+            // Update temperature status
+            const tempStatus = document.getElementById('tempStatus');
+            if (currentTemp < 40) {
+                tempStatus.textContent = 'Normal';
+                tempStatus.style.color = '#34a853'; // Green
+            } else if (currentTemp < 60) {
+                tempStatus.textContent = 'Moderate';
+                tempStatus.style.color = '#fbbc05'; // Yellow
+            } else if (currentTemp < 75) {
+                tempStatus.textContent = 'High';
+                tempStatus.style.color = '#ff9800'; // Orange
+            } else {
+                tempStatus.textContent = 'Critical';
+                tempStatus.style.color = '#ea4335'; // Red
+            }
+        }
+        
+        function updateRPMDisplay(rpm) {
+            // Update gauge and text display
+            document.getElementById('rpmValue').textContent = Math.round(rpm);
+            
+            // Update gauge chart
+            rpmGauge.data.datasets[0].data = [rpm, 3000 - rpm];
+            rpmGauge.update();
+            
+            // Update line chart
+            rpmData.push(rpm);
+            rpmData.shift();
+            
+            // Update time labels
+            timeLabels.push(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}));
+            timeLabels.shift();
+            
+            rpmChart.data.labels = timeLabels;
+            rpmChart.data.datasets[0].data = rpmData;
+            rpmChart.update();
+        }
+        
+        function updateTemperatureDisplay(temp) {
+            // Update gauge and text display
+            document.getElementById('tempValue').textContent = temp.toFixed(1);
+            
+            // Update gauge chart
+            tempGauge.data.datasets[0].data = [temp, 100 - temp];
+            tempGauge.update();
+            
+            // Update line chart
+            tempData.push(temp);
+            tempData.shift();
+            
+            tempChart.data.datasets[0].data = tempData;
+            tempChart.update();
+        }
+        
+        function updateStatistics() {
+            if (rpmValues.length === 0 || tempValues.length === 0) return;
+            
+            // Calculate RPM statistics
+            const avgRpm = rpmValues.reduce((a, b) => a + b, 0) / rpmValues.length;
+            const maxRpm = Math.max(...rpmValues);
+            
+            // Calculate temperature statistics
+            const avgTemp = tempValues.reduce((a, b) => a + b, 0) / tempValues.length;
+            const maxTemp = Math.max(...tempValues);
+            
+            // Update display
+            document.getElementById('avgRpm').textContent = Math.round(avgRpm);
+            document.getElementById('maxRpm').textContent = Math.round(maxRpm);
+            document.getElementById('avgTemp').textContent = avgTemp.toFixed(1);
+            document.getElementById('maxTemp').textContent = maxTemp.toFixed(1);
+        }
+        
+        // Initial call to set up everything
+        updateRPMDisplay(currentRpm);
+        updateTemperatureDisplay(currentTemp);
+    </script>
+</body>
+</html> 
