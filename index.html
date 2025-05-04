@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IoT Lathe Monitoring System</title>
     <!-- Firebase SDK -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
@@ -34,57 +34,86 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 8px;
+            }
         }
         
         header {
             background-color: var(--primary);
             color: white;
-            padding: 1rem;
+            padding: 0.8rem;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        @media (min-width: 768px) {
+            header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1rem;
+                position: relative;
+            }
         }
         
         header h1 {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             margin: 0;
         }
         
+        @media (min-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+        }
+        
         .team-info {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             opacity: 0.8;
+        }
+        
+        @media (min-width: 768px) {
+            .team-info {
+                font-size: 0.8rem;
+            }
         }
         
         .status-indicator {
             display: flex;
             align-items: center;
             gap: 8px;
+            margin-top: 5px;
         }
         
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #ccc;
-        }
-        
-        .status-dot.online {
-            background-color: var(--secondary);
-            box-shadow: 0 0 8px var(--secondary);
+        @media (min-width: 768px) {
+            .status-indicator {
+                margin-top: 0;
+            }
         }
         
         .grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            grid-template-columns: 1fr;
+            gap: 15px;
         }
         
-        @media (max-width: 768px) {
+        @media (min-width: 768px) {
             .grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
             }
         }
         
@@ -92,9 +121,15 @@
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 480px) {
+            .card {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
         }
         
         .card-header {
@@ -123,12 +158,26 @@
         .gauge-container {
             position: relative;
             text-align: center;
-            margin: 20px 0;
+            margin: 15px 0;
+            touch-action: none; /* Prevent touch interference with gauge */
+        }
+        
+        @media (max-width: 480px) {
+            .gauge-container {
+                margin: 10px 0;
+            }
         }
         
         .gauge {
-            width: 200px;
-            height: 200px;
+            width: 150px;
+            height: 150px;
+        }
+        
+        @media (min-width: 768px) {
+            .gauge {
+                width: 200px;
+                height: 200px;
+            }
         }
         
         .gauge-value {
@@ -136,8 +185,14 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: bold;
+        }
+        
+        @media (min-width: 768px) {
+            .gauge-value {
+                font-size: 2.5rem;
+            }
         }
         
         .gauge-unit {
@@ -147,26 +202,47 @@
         
         .chart-container {
             position: relative;
-            height: 250px;
+            height: 200px;
             width: 100%;
+            touch-action: none; /* Prevent touch interference with charts */
+        }
+        
+        @media (max-width: 480px) {
+            .chart-container {
+                height: 180px;
+            }
         }
         
         .controls {
-            margin-top: 20px;
+            margin-top: 15px;
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            flex-direction: column;
             gap: 10px;
         }
         
+        @media (min-width: 768px) {
+            .controls {
+                flex-direction: row;
+            }
+        }
+        
         .control-btn {
-            padding: 10px 20px;
+            padding: 8px 15px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s ease;
             flex: 1;
+            font-size: 0.9rem;
+            min-height: 44px; /* Minimum touch target size */
+            touch-action: manipulation; /* Optimize for touch */
+        }
+        
+        @media (max-width: 480px) {
+            .control-btn {
+                padding: 12px 20px; /* Larger touch target on very small screens */
+            }
         }
         
         .start-btn {
@@ -189,25 +265,39 @@
         }
         
         .stats-container {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 20px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
+            margin-top: 15px;
+            touch-action: manipulation;
+        }
+        
+        @media (max-width: 480px) {
+            .stats-container {
+                gap: 8px;
+            }
         }
         
         .stat-item {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            min-width: 120px;
+            padding: 10px;
+            min-width: auto;
+            touch-action: manipulation;
+        }
+        
+        @media (max-width: 480px) {
+            .stat-item {
+                padding: 8px;
+            }
         }
         
         .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary);
+            font-size: 1.2rem;
+        }
+        
+        @media (min-width: 768px) {
+            .stat-value {
+                font-size: 1.5rem;
+            }
         }
         
         .stat-label {
@@ -228,6 +318,22 @@
         .disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+        
+        /* Add smooth transitions for better mobile experience */
+        .control-btn, .stat-item, .card {
+            transition: all 0.2s ease;
+        }
+        
+        /* Improve touch feedback */
+        .control-btn:active, .stat-item:active {
+            transform: scale(0.98);
+        }
+        
+        /* Prevent text selection on mobile */
+        .control-btn, .stat-item, .gauge-value {
+            user-select: none;
+            -webkit-user-select: none;
         }
     </style>
 </head>
